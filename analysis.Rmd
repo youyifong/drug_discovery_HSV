@@ -1,0 +1,1068 @@
+---
+title: "Analysis"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(kyotil)
+library(lme4)
+
+# set drugs variable
+dat=read.csv("fig5b.csv", row.names=1)
+drugs=rownames(dat)
+names(drugs)=drugs
+```
+
+## Intro
+
+The IC50 is absolute IC50 not relative IC50. IC50 are log transformed in regression models and reported as ratios (not log ratio) in comparison. 
+
+The unit of max inhibition is percentage and rounded to integer percentages as effect sizes for half a percentage point is not considered scientifically relevant. The maximum inhibition is not log transformed in analysis.
+
+Ali and submerged are from the same donor.
+
+NGC is excluded from the study drugs.
+
+<!-- Coding note: log10 should not be used in the analysis. The data is log transformed and the analysis is based on exp transformed effects. Geometric means are computed by log transform followed by mean followed by exp transformation. -->
+
+<!-- optional: improve axis labels -->
+
+
+## Fig 2
+
+The Wilcoxon two-sample test results are similar to t-test results.
+
+```{r, echo=F, message=F}
+dat=read.csv("fig2.csv")
+
+pvals=sapply (1:4, function (i) {
+  tmp=dat[,i*2+(-1:0)]
+  wilcox.test(tmp[,1], tmp[,2])$p.value
+})
+pvals
+```
+
+
+## Fig 4/S7
+
+Using linear mixed models to compare cell types to account for dependent structure of multiple donors. 
+
+
+```{r, echo=F, message=F}
+
+# multiple time points
+
+for (i in 1:4) {
+    
+  if (i==1) {
+    dat=read.csv("fig4.csv", row.names=1)
+    print("Fig 4")
+  } else if(i==2) {
+    dat=read.csv("figS7_20.csv", row.names=1)
+    print("Fig S7 20h")
+  } else if (i==3) {
+    dat=read.csv("figS7_36.csv", row.names=1)
+    print("Fig S7 36h")
+  } else {
+    dat=read.csv("figS7_48.csv", row.names=1)
+    print("Fig S7 48h")
+  }
+  
+  dat.1=cbind(trt="Vero", t(dat[1,1:5]))
+  colnames(dat.1)[2]="y"
+  
+  # remove the first row, the vero data
+  dat = dat[-1,]
+  
+  # turn the data into a long format
+  dat.2 = myreshapelong(dat[,c("k"%.%(1:5))], cols.to.be.stacked="k"%.%(1:5), label.cols.to.be.stacked="replicate", 
+                        new.col.name="y")
+  
+  dat.3 = myreshapelong(dat[,c("f"%.%(1:3))], cols.to.be.stacked="f"%.%(1:3), label.cols.to.be.stacked="replicate", 
+                        new.col.name="y")
+  
+  newdata = rbind(cbind(dat.2, Trt="K"), cbind(dat.3, Trt="F"), cbind(replicate="v"%.%1:5, y=dat.1[,"y"], id="0", Trt="V"))
+  newdata$y=as.numeric(newdata$y)
+  
+  
+  # fit a linear mixed model to compare two treatment options: Keratinocytes and V
+  fit = lmer(log(y) ~ Trt + (1|id), data=subset(newdata, Trt %in% c("K", "V")))
+  #summary(fit)
+  
+  # fit a linear mixed model to compare two treatment options: F and V
+  fit2 = lmer(log(y) ~ Trt + (1|id), data=subset(newdata, Trt %in% c("F", "V")))
+  #summary(fit2)
+  
+  # fit a linear mixed model to compare two treatment options: F and K
+  # note that y is already log transformed in the data
+  fit3 = lmer(log(y) ~ Trt + (1|id), data=subset(newdata, Trt %in% c("F", "K")))
+  #summary(fit2)
+  
+  tab=getFormattedSummary(list("Keratinocytes-Vero"=fit, "Fibroblasts-Vero"=fit2, "Fibroblasts-Keratinocytes"=fit3), robust=T, p.digits=4, exp=T)
+  print(tab[-1,])
+  
+  #tab=getFormattedSummary(list("Keratinocytes-V"=fit, "Fibroblasts-V"=fit2), robust=T, p.digits=4, type=10)
+  #tab[-1,]
+
+}
+
+```
+
+
+
+\newpage
+## Fig 5b Fibroblasts-Keratinocytes comparison - IC50
+
+Each point is a single technical replicate.
+
+```{r, echo=F, fig.width=10, fig.height=3.1}
+dat=read.csv("fig5b.csv", row.names=1)
+
+lim=range(dat, na.rm=T)
+cex=1.5
+
+par(mfrow=c(1,3))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+plot(dat[,1], dat[,1+9], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="IC50, Donor 3")
+points(dat[,2], dat[,2+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+points(dat[,3], dat[,3+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+abline(0,1)
+mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+
+plot(dat[,1+1], dat[,1+9+1], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="IC50, Donor 4")
+points(dat[,2+1], dat[,2+9+1], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+points(dat[,3+1], dat[,3+9+1], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+abline(0,1)
+mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+
+plot(dat[,1+2], dat[,1+9+2], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="IC50, Donor 5")
+points(dat[,2+2], dat[,2+9+2], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+points(dat[,3+2], dat[,3+9+2], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+abline(0,1)
+mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+```
+
+We fit a linear mixed model with a donor random effect for each drug to compare the IC50 of keratinocytes and fibroblasts. Multitesting-adjusted P values are shown below.
+
+```{r, echo=F, message=F}
+dat=read.csv("fig5b.csv", row.names=1)
+
+fits=lapply (drugs, function (i) {
+  tmp=data.frame(rbind(cbind("K", unlist(dat[i,1:9])), cbind("F", unlist(dat[i,1:9+9,drop=T]))))
+  tmp$donor=rep(3:5, each=3)
+  names(tmp)[1]="Trt"
+  names(tmp)[2]="y"
+  tmp[[2]]=as.numeric(tmp[[2]])
+  
+  capture.output({fit = lmer(log(y) ~ Trt + (1|donor), data=tmp)}, type="message")
+  fit
+})
+
+
+tab=getFormattedSummary(fits, robust=T, p.digits=4, type=11, p.adj.method="holm", rows=2)
+tab[order(as.numeric(tab))]
+```
+
+
+\newpage
+### Fig S10. Donor effects
+
+Each point is the average of three technical replicates.
+
+```{r, echo=F, fig.width=8.5, fig.height=8}
+dat=read.csv("fig5b.csv", row.names=1)
+
+# take means across technical replicates
+dat.1 = sapply (1:6, function (i) exp(apply(log(dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
+
+
+lim=range(dat.1, na.rm=T)
+cex=1.5
+
+par(mfrow=c(2,2))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+plot(dat.1[,1], dat.1[,2], log="xy", pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 4", main="IC50")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+plot(dat.1[,1], dat.1[,3], log="xy", pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 5", main="IC50")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+plot(dat.1[,4], dat.1[,5], log="xy", pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 4", main="IC50")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+plot(dat.1[,4], dat.1[,6], log="xy", pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 5", main="IC50")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+
+# lim=range(dat, na.rm=T)
+# cex=1.5
+# 
+# par(mfrow=c(2,2))
+# par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+# 
+# plot(dat[,1], dat[,4], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 4", main="IC50")
+# points(dat[,2], dat[,5], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3], dat[,6], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+# 
+# plot(dat[,1], dat[,4+3], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 5", main="IC50")
+# points(dat[,2], dat[,5+3], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3], dat[,6+3], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+# 
+# plot(dat[,1+9], dat[,4+9], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 4", main="IC50")
+# points(dat[,2+9], dat[,5+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3+9], dat[,6+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+# 
+# plot(dat[,1+9], dat[,4+3+9], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 5", main="IC50")
+# points(dat[,2+9], dat[,5+3+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3+9], dat[,6+3+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+```
+
+
+Fit linear mixed models with donors as fixed effects and drug as a random effect and test the null hypothesis that the donor effects, 3 vs 4 and 3 vs 5, are both 0. P values are shown below.
+
+```{r, echo=F, message=F}
+dat=read.csv("fig5b.csv", row.names=1)
+
+for(j in 0:1) {
+  if (j==0) print("Keratinocytes") else print("Fibroblasts")
+  tmp=data.frame(rbind(cbind(rownames(dat), 3, unlist(dat[,1+9*j])),
+                       cbind(rownames(dat), 3, unlist(dat[,2+9*j])),
+                       cbind(rownames(dat), 3, unlist(dat[,3+9*j])),
+                       cbind(rownames(dat), 4, unlist(dat[,4+9*j])),
+                       cbind(rownames(dat), 4, unlist(dat[,5+9*j])),
+                       cbind(rownames(dat), 4, unlist(dat[,6+9*j])),
+                       cbind(rownames(dat), 5, unlist(dat[,7+9*j])),
+                       cbind(rownames(dat), 5, unlist(dat[,8+9*j])),
+                       cbind(rownames(dat), 5, unlist(dat[,9+9*j]))
+                       ))
+  
+  names(tmp)=c("drug","donor","y")
+  tmp[[3]]=as.numeric(tmp[[3]])
+  
+  fit = lmer(log(y) ~ donor + (1|drug), data=tmp)
+  est=unlist(coef(fit)[[1]][1,]) # all rows are identical in the second and third columns
+  
+  cat("Donor 3 vs 4 p value: ", pchisq((est[2] %*% solve(vcov(fit)[2,2]) %*% est[2])[1,1], 1, lower=F), "\n")
+  cat("Donor 3 vs 5 p value: ", pchisq((est[3] %*% solve(vcov(fit)[3,3]) %*% est[3])[1,1], 1, lower=F), "\n")
+  cat("Donor 4 vs 5 p value: ", pchisq(((est[2]-est[3]) %*% solve(c(1,-1)%*%vcov(fit)[2:3,2:3]%*%c(1,-1)) %*% (est[2]-est[3]))[1,1], 1, lower=F), "\n")
+  
+  cat("Overall p value: ", pchisq((est[-1] %*% solve(vcov(fit)[2:3,2:3]) %*% est[-1])[1,1], 2, lower=F), "\n")
+}
+```
+
+
+This time, including comparion of Donor 4 and 5
+
+```{r, echo=F, fig.width=8.5, fig.height=8}
+dat=read.csv("fig5b.csv", row.names=1)
+
+# take means across technical replicates
+dat.1 = sapply (1:6, function (i) exp(apply(log(dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
+
+
+lim=range(dat.1, na.rm=T)
+cex=1.5
+
+par(mfrow=c(2,2))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+plot(dat.1[,2], dat.1[,3], log="xy", pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 4", ylab="Keratinocytes, Donor 5", main="IC50")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+empty.plot()
+
+
+plot(dat.1[,5], dat.1[,6], log="xy", pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 4", ylab="Fibroblasts, Donor 5", main="IC50")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+
+```
+
+\newpage
+## Fig 5c Fibroblasts-Keratinocytes comparison - Max Inhibition
+
+Each point is a single technical replicate.
+
+```{r, echo=F, fig.width=10, fig.height=3.1}
+dat=read.csv("fig5c.csv", row.names=1)
+
+lim=range(dat, na.rm=T)
+cex=1.5
+
+par(mfrow=c(1,3))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+plot(dat[,1], dat[,1+9], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="Max Inhibition, Donor 3")
+points(dat[,2], dat[,2+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+points(dat[,3], dat[,3+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+abline(0,1)
+mylegend(rownames(dat), x=4, col=1:nrow(dat), pch=1:nrow(dat))
+
+plot(dat[,1+1], dat[,1+9+1], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="Max Inhibition, Donor 4")
+points(dat[,2+1], dat[,2+9+1], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+points(dat[,3+1], dat[,3+9+1], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+abline(0,1)
+mylegend(rownames(dat), x=4, col=1:nrow(dat), pch=1:nrow(dat))
+
+plot(dat[,1+2], dat[,1+9+2], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="Max Inhibition, Donor 5")
+points(dat[,2+2], dat[,2+9+2], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+points(dat[,3+2], dat[,3+9+2], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+abline(0,1)
+mylegend(rownames(dat), x=4, col=1:nrow(dat), pch=1:nrow(dat))
+```
+
+Multitesting-adjusted P values are shown below.
+
+```{r, echo=F, message=F}
+dat=read.csv("fig5c.csv", row.names=1)
+dat=round(dat, 0)
+
+fits=lapply (drugs, function (i) {
+  tmp=data.frame(rbind(cbind("K", unlist(dat[i,1:9])), cbind("F", unlist(dat[i,1:9+9,drop=T]))))
+  tmp$donor=rep(3:5, each=3)
+  names(tmp)[1]="Trt"
+  names(tmp)[2]="y"
+  tmp[[2]]=as.numeric(tmp[[2]])
+  
+  capture.output({fit = lmer(y ~ Trt + (1|donor), data=tmp)}, type="message")
+  fit
+})
+
+tab=getFormattedSummary(fits, robust=T, p.digits=4, type=11, p.adj.method="holm", rows=2)
+tab[order(as.numeric(tab))]
+```
+
+
+
+\newpage
+### Fig S10. Donor effects
+
+Each point is the average of three technical replicates.
+
+```{r, echo=F, fig.width=8.5, fig.height=8}
+dat=read.csv("fig5c.csv", row.names=1)
+dat=round(dat, 0)
+# take means across technical replicates
+dat.1 = sapply (1:6, function (i) (apply((dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
+
+lim=range(dat.1, na.rm=T)
+cex=1.5
+
+par(mfrow=c(2,2))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+plot(dat.1[,1], dat.1[,2], pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 4", main="Max Inhibition")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+plot(dat.1[,1], dat.1[,3], pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 5", main="Max Inhibition")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+plot(dat.1[,4], dat.1[,5], pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 4", main="Max Inhibition")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+plot(dat.1[,4], dat.1[,6], pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 5", main="Max Inhibition")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+
+# lim=range(dat, na.rm=T)
+# cex=1.5
+# 
+# par(mfrow=c(2,2))
+# par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+# 
+# plot(dat[,1], dat[,4], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 4", main="Max Inhibition")
+# points(dat[,2], dat[,5], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3], dat[,6], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+# 
+# plot(dat[,1], dat[,4+3], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 3", ylab="Keratinocytes, Donor 5", main="Max Inhibition")
+# points(dat[,2], dat[,5+3], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3], dat[,6+3], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+# 
+# plot(dat[,1+9], dat[,4+9], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 4", main="Max Inhibition")
+# points(dat[,2+9], dat[,5+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3+9], dat[,6+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+# 
+# plot(dat[,1+9], dat[,4+3+9], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 3", ylab="Fibroblasts, Donor 5", main="Max Inhibition")
+# points(dat[,2+9], dat[,5+3+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3+9], dat[,6+3+9], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# abline(0,1)
+# mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+```
+
+
+
+Fit linear mixed models with donors as fixed effects and drug as a random effect and test the null hypothesis that the donor effects, 3 vs 4 and 3 vs 5, are both 0. P values are shown below.
+
+```{r, echo=F, message=F}
+dat=read.csv("fig5c.csv", row.names=1)
+dat=round(dat, 0)
+
+for(j in 0:1) {
+  if (j==0) print("Keratinocytes") else print("Fibroblasts")
+  tmp=data.frame(rbind(cbind(rownames(dat), 3, unlist(dat[,1+9*j])),
+                       cbind(rownames(dat), 3, unlist(dat[,2+9*j])),
+                       cbind(rownames(dat), 3, unlist(dat[,3+9*j])),
+                       cbind(rownames(dat), 4, unlist(dat[,4+9*j])),
+                       cbind(rownames(dat), 4, unlist(dat[,5+9*j])),
+                       cbind(rownames(dat), 4, unlist(dat[,6+9*j])),
+                       cbind(rownames(dat), 5, unlist(dat[,7+9*j])),
+                       cbind(rownames(dat), 5, unlist(dat[,8+9*j])),
+                       cbind(rownames(dat), 5, unlist(dat[,9+9*j]))
+                       ))
+  
+  names(tmp)=c("drug","donor","y")
+  tmp[[3]]=as.numeric(tmp[[3]])
+  
+  # myboxplot(y~drug, data=tmp, pch=tmp$donor)
+  
+  fit = lmer(y ~ donor + (1|drug), data=tmp)
+  est=unlist(coef(fit)[[1]][1,])
+  
+  cat("Donor 3 vs 4 p value: ", pchisq((est[2] %*% solve(vcov(fit)[2,2]) %*% est[2])[1,1], 1, lower=F), "\n")
+  cat("Donor 3 vs 5 p value: ", pchisq((est[3] %*% solve(vcov(fit)[3,3]) %*% est[3])[1,1], 1, lower=F), "\n")
+  cat("Donor 4 vs 5 p value: ", pchisq(((est[2]-est[3]) %*% solve(c(1,-1)%*%vcov(fit)[2:3,2:3]%*%c(1,-1)) %*% (est[2]-est[3]))[1,1], 1, lower=F), "\n")
+  
+  cat("Overall p value: ", pchisq((est[-1] %*% solve(vcov(fit)[2:3,2:3]) %*% est[-1])[1,1], 2, lower=F), "\n")
+  
+}
+```
+
+
+This time, including comparion of Donor 4 and 5
+
+```{r, echo=F, fig.width=8.5, fig.height=8}
+dat=read.csv("fig5c.csv", row.names=1)
+dat=round(dat, 0)
+# take means across technical replicates
+dat.1 = sapply (1:6, function (i) (apply((dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
+
+lim=range(dat.1, na.rm=T)
+cex=1.5
+
+par(mfrow=c(2,2))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+plot(dat.1[,2], dat.1[,3], pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes, Donor 4", ylab="Keratinocytes, Donor 5", main="Max Inhibition")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+empty.plot()
+
+plot(dat.1[,5], dat.1[,6], pch=1:nrow(dat.1), col=1:nrow(dat.1), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts, Donor 4", ylab="Fibroblasts, Donor 5", main="Max Inhibition")
+abline(0,1)
+mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
+
+empty.plot()
+```
+
+\newpage
+## Fig 6a Four tissue models comparison - IC50
+
+Each point in the figure below represents the average of technical replicates for each donor. Thus, for Ali and Submerged, there is only one unique value for each drug.
+
+```{r, echo=F, fig.width=9.6, fig.height=6}
+dat=read.csv("fig5b.csv", row.names=1)
+# take means across technical replicates
+# dat.1 = sapply (1:6, function (i) exp(apply(log(dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
+# take means across technical and donor replicates
+dat.1 = sapply (1:2, function (i) exp(apply(log(dat[,1:9+(i-1)*9]), 1, mean, na.rm=T)))
+
+# add ali and submerged data
+dat=read.csv("fig6a.csv", row.names=1)
+# take means across technical replicates
+submerged.mean=exp(apply(log(dat[,1:8]), 1, mean, na.rm=T))
+ali.mean=exp(apply(log(dat[,9:13]), 1, mean, na.rm=T))
+
+dat=cbind(dat.1, 
+          submerged.mean, 
+          ali.mean)
+
+
+colnames(dat)=c("K", 
+                "F",
+                "S",
+                "A"
+                )
+mywrite.csv(dat, "fig6aplot", row.names = T)
+
+lim=range(dat, na.rm=T)
+cex=1.5
+
+par(mfcol=c(2,3))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+# Fibroblasts-Keratinocytes comparison
+plot(dat[,"K"], dat[,"F"], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="IC50, Fibroblasts-Keratinocytes")
+# points(dat[,2], dat[,5], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+# points(dat[,3], dat[,6], col=1:nrow(dat), pch=1:nrow(dat), cex=cex)
+abline(0,1)
+
+# Ali-Submerged comparison
+plot(dat[,"S"], dat[,"A"], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Submerged", ylab="Ali", main="IC50, Ali-Submerged")
+abline(0,1)
+mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+
+# Submerged-Keratinocytes comparison
+plot(dat[,"K"], dat[,"S"], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Submerged", main="IC50, Submerged-Keratinocytes")
+abline(0,1)
+
+# Ali-Fibroblasts comparison
+plot(dat[,"F"], dat[,"A"], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts", ylab="Ali", main="IC50, Ali-Fibroblasts")
+abline(0,1)
+
+# Submerged-Fibroblasts comparison
+# most alike
+plot(dat[,"F"], dat[,"S"], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts", ylab="Submerged", main="IC50, Submerged-Fibroblasts")
+abline(0,1)
+
+# Ali-Keratinocytes comparison
+plot(dat[,"K"], dat[,"A"], log="xy", pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Ali", main="IC50, Ali-Keratinocytes")
+abline(0,1)
+```
+
+
+\newpage
+For comparing 3D Ali and 3D Submerged, we fit a linear model for each drug. For other comparisons, which all involve more than 1 donor for some tissue models, we fit a linear mixed model with a donor random effect for each drug. 
+
+2D vs 3D comes from comparing Keratinocytes and Fibroblasts with Submerged and Ali, using a mixed model adjusting for donor effects. Note that Submerged and Ali come from the same donor.
+
+The overall p values come from comparing the four tissue models.
+
+A table of the estimated ratios of IC50 (95\% CI) and adjusted p values are shown below. 
+
+```{r, echo=F, message=F}
+
+# turn Keratinocytes and Fibroblasts data into long format
+dat=read.csv("fig5b.csv", row.names=1)
+
+# i is 0 for Keratinocytes and 1 for Fibroblasts
+dat.long=NULL
+for (i in 0:1) {
+  # reshape the first 3 columns into a long dataset
+  idx=1:3+9*i
+  dat.1 = myreshapelong(dat[,idx], cols.to.be.stacked=colnames(dat)[idx], label.cols.to.be.stacked="donor", new.col.name="id50")
+  dat.1$drug = drugs
+  dat.1$id=NULL
+  dat.1$donor=3
+   
+  # repeat for the second set of 3 columns
+  idx=4:6+9*i
+  dat.2 = myreshapelong(dat[,idx], cols.to.be.stacked=colnames(dat)[idx], label.cols.to.be.stacked="donor", new.col.name="id50")
+  dat.2$drug = drugs
+  dat.2$id=NULL
+  dat.2$donor=4
+  
+  # repeat for the third set of 3 columns
+  idx=7:9+9*i
+  dat.3 = myreshapelong(dat[,idx], cols.to.be.stacked=colnames(dat)[idx], label.cols.to.be.stacked="donor", new.col.name="id50")
+  dat.3$drug = drugs
+  dat.3$id=NULL
+  dat.3$donor=5
+  
+  # rbind the three data frames 
+  tmp = rbind(dat.1, dat.2, dat.3)
+  tmp$tissue = ifelse(i==0, "Keratinocytes", "Fibroblasts")
+  dat.long = rbind(dat.long, tmp)
+}
+
+
+# Turn ali and submerged data into long format
+dat=read.csv("fig6a.csv", row.names=1)
+# column 1 through 8 are submerged data, 9 through 13 are ali data
+for (i in 1:8) {
+  dat.long = rbind(dat.long, data.frame(donor="donor submerged/ali", id50=dat[,i], drug=rownames(dat), tissue="Submerged"))
+}
+for (i in 9:13) {
+  dat.long = rbind(dat.long, data.frame(donor="donor submerged/ali", id50=dat[,i], drug=rownames(dat), tissue="Ali"))
+}
+
+
+
+
+# S-A comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Submerged", "Ali"))
+  capture.output({fit = lm(log(id50) ~ tissue, data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=T)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_S_A=tab
+
+
+# S-K comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Submerged", "Keratinocytes"))
+  capture.output({fit = lmer(log(id50) ~ tissue + (1|donor), data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=T)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_S_K=tab
+
+
+# A-F comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Ali", "Fibroblasts"))
+  capture.output(suppressWarnings({fit = lmer(log(id50) ~ tissue + (1|donor), data=tmp)}), type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=T)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_A_F=tab
+
+
+# K-F comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Fibroblasts", "Keratinocytes"))
+  capture.output({fit = lmer(log(id50) ~ tissue + (1|donor), data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=T)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_K_F=tab
+
+
+# 3D-2D comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d)
+  tmp$Trt = ifelse(tmp$tissue %in% c("Fibroblasts", "Keratinocytes"), "2D", "3D")
+  capture.output({fit = lmer(log(id50) ~ Trt + (1|donor), data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=T)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_3D_2D=tab
+
+
+
+# All models comparison
+pvals=sapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d)
+  capture.output({fit = lmer(log(id50) ~ tissue + (1|donor), data=tmp)}, type="message")
+  est=unlist(coef(fit)[[1]][1,-1])
+  pchisq((est %*% solve(vcov(fit)[2:4,2:4]) %*% est)[1,1], 3, lower=F)
+})
+tab=p.adjust(pvals, method="holm")
+names(tab)=rownames(dat)
+tab_all=tab
+
+
+# combine results
+tab=cbind(tab_K_F, tab_S_A, tab_S_K, tab_A_F, tab_3D_2D, tab_all)
+colnames(tab)=c("K-F", "adj.p", "S-A", "adj.p", "S-K", "adj.p", "F-A", "adj.p", "3D-2D", "adj.p", "Overall adj.p")
+tab=tab[order(as.numeric(tab[,ncol(tab)])),]
+print(tab)
+mywrite.csv(tab, "fig6a_inferenc", row.names = T)
+
+```
+
+
+
+\newpage
+## Fig 6b Four tissue models comparison - Max inhibition
+
+Each point in the figure below represents the average of technical replicates for each donor. Thus, for Ali and Submerged, there is only one unique value for each drug.
+
+```{r, echo=F, fig.width=9.6, fig.height=6}
+
+dat=read.csv("fig5c.csv", row.names=1)
+dat=round(dat, 0)
+# take means across technical replicates
+# dat.1 = sapply (1:6, function (i) (apply((dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
+# take means across technical and donor replicates
+dat.1 = sapply (1:2, function (i) (apply((dat[,1:9+(i-1)*9]), 1, mean, na.rm=T))) 
+
+# add ali and submerged data
+dat=read.csv("fig6b.csv", row.names=1)
+# take means across technical replicates
+submerged.mean=(apply((dat[,1:8]), 1, mean, na.rm=T))
+ali.mean=(apply((dat[,9:13]), 1, mean, na.rm=T))
+
+dat=cbind(dat.1, 
+          submerged.mean, 
+          ali.mean)
+
+colnames(dat)=c("K", 
+                "F",
+                "S",
+                "A"
+                )
+mywrite.csv(dat, "fig6bplot", row.names = T)
+
+
+lim=range(dat, na.rm=T)
+cex=1.5
+
+par(mfcol=c(2,3))
+par(mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+# Fibroblasts-Keratinocytes comparison
+plot(dat[,"K"], dat[,"F"], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Fibroblasts", main="Max Inhibition, Fibroblasts-Keratinocytes")
+abline(0,1)
+
+# Ali-Submerged comparison
+plot(dat[,"S"], dat[,"A"], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Submerged", ylab="Ali", main="Max Inhibition, Ali-Submerged")
+abline(0,1)
+mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
+
+# Submerged-Keratinocytes comparison
+plot(dat[,"K"], dat[,"S"], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Submerged", main="Max Inhibition, Submerged-Keratinocytes")
+abline(0,1)
+
+# Ali-Fibroblasts comparison
+plot(dat[,"F"], dat[,"A"], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts", ylab="Ali", main="Max Inhibition, Ali-Fibroblasts")
+abline(0,1)
+
+# Submerged-Fibroblasts comparison
+# most alike
+plot(dat[,"F"], dat[,"S"], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Fibroblasts", ylab="Submerged", main="Max Inhibition, Submerged-Fibroblasts")
+abline(0,1)
+
+# Ali-Keratinocytes comparison
+plot(dat[,"K"], dat[,"A"], pch=1:nrow(dat), col=1:nrow(dat), cex=cex, xlim=lim, ylim=lim, xlab="Keratinocytes", ylab="Ali", main="Max Inhibition, Ali-Keratinocytes")
+abline(0,1)
+```
+
+\newpage
+For comparing 3D Ali and 3D Submerged, we fit a linear model for each drug. For other comparisons, which all involve more than 1 donor for some tissue models, we fit a linear mixed model with a donor random effect for each drug. A table of the estimated differences and adjusted p values are shown below.
+
+
+```{r, echo=F, message=F}
+
+# no log and exp for max inhibition
+exp=F
+
+# turn Keratinocytes and Fibroblasts data into long format
+dat=read.csv("fig5c.csv", row.names=1)
+dat=round(dat, 0)
+
+# i is 0 for Keratinocytes and 1 for Fibroblasts
+dat.long=NULL
+for (i in 0:1) {
+  # reshape the first 3 columns into a long dataset
+  idx=1:3+9*i
+  dat.1 = myreshapelong(dat[,idx], cols.to.be.stacked=colnames(dat)[idx], label.cols.to.be.stacked="donor", new.col.name="maxinh")
+  dat.1$drug = drugs
+  dat.1$id=NULL
+  dat.1$donor=3
+  
+  # repeat for the second set of 3 columns
+  idx=4:6+9*i
+  dat.2 = myreshapelong(dat[,idx], cols.to.be.stacked=colnames(dat)[idx], label.cols.to.be.stacked="donor", new.col.name="maxinh")
+  dat.2$drug = drugs
+  dat.2$id=NULL
+  dat.2$donor=4
+  
+  # repeat for the third set of 3 columns
+  idx=7:9+9*i
+  dat.3 = myreshapelong(dat[,idx], cols.to.be.stacked=colnames(dat)[idx], label.cols.to.be.stacked="donor", new.col.name="maxinh")
+  dat.3$drug = drugs
+  dat.3$id=NULL
+  dat.3$donor=5
+  
+  # rbind the three data frames 
+  tmp = rbind(dat.1, dat.2, dat.3)
+  tmp$tissue = ifelse(i==0, "Keratinocytes", "Fibroblasts")
+  dat.long = rbind(dat.long, tmp)
+}
+
+
+# Turn ali and submerged data into long format
+dat=read.csv("fig6b.csv", row.names=1)
+
+# column 1 through 8 are submerged data, 9 through 13 are ali data
+for (i in 1:8) {
+  dat.long = rbind(dat.long, data.frame(donor="donor submerged/ali", maxinh=dat[,i], drug=rownames(dat), tissue="Submerged"))
+}
+for (i in 9:13) {
+  dat.long = rbind(dat.long, data.frame(donor="donor submerged/ali", maxinh=dat[,i], drug=rownames(dat), tissue="Ali"))
+}
+
+
+# S-A comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Submerged", "Ali"))
+  fit = lm(maxinh ~ tissue, data=tmp)
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=exp)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_S_A=tab
+
+
+# S-K comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Submerged", "Keratinocytes"))
+  capture.output({fit = lmer(maxinh ~ tissue + (1|donor), data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=exp)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_S_K=tab
+
+
+# A-F comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Ali", "Fibroblasts"))
+  capture.output({fit = lmer(maxinh ~ tissue + (1|donor), data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=exp)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_A_F=tab
+
+
+# K-F comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d & tissue %in% c("Fibroblasts", "Keratinocytes"))
+  capture.output({fit = lmer(maxinh ~ tissue + (1|donor), data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=exp)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_K_F=tab
+
+
+# 3D-2D comparison
+fits=lapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d)
+  tmp$Trt = ifelse(tmp$tissue %in% c("Fibroblasts", "Keratinocytes"), "2D", "3D")
+  capture.output({fit = lmer(maxinh ~ Trt + (1|donor), data=tmp)}, type="message")
+  fit
+})
+tab=data.frame(getFormattedSummary(fits, robust=F, type=3, exp=exp)[2,],
+               getFormattedSummary(fits, robust=F, type=11, p.adj.method="holm", rows=2))
+colnames(tab)=c("est (lb, ub)", "adjusted P value")
+tab[[2]]=as.numeric(tab[[2]])
+tab_3D_2D=tab
+
+
+
+# All models comparison
+pvals=sapply (drugs, function (d) {
+  tmp=subset(dat.long, drug==d)
+  capture.output({fit = lmer(maxinh ~ tissue + (1|donor), data=tmp)}, type="message")
+  est=unlist(coef(fit)[[1]][1,-1])
+  pchisq((est %*% solve(vcov(fit)[2:4,2:4]) %*% est)[1,1], 3, lower=F)
+})
+tab=p.adjust(pvals, method="holm")
+names(tab)=rownames(dat)
+tab_all=tab
+
+
+# combine results
+tab=cbind(tab_K_F, tab_S_A, tab_S_K, tab_A_F, tab_3D_2D, tab_all)
+colnames(tab)=c("K-F", "adj.p", "S-A", "adj.p", "S-K", "adj.p", "F-A", "adj.p", "3D-2D", "adj.p", "Overall adj.p")
+tab=tab[order(as.numeric(tab[,ncol(tab)])),]
+print(tab)
+mywrite.csv(tab, "fig6b_inferenc", row.names = T)
+```
+
+\newpage
+
+# GFP trajectory
+
+Goal: Generate a trendline for each cell type and/or cell type per donor, then compare the exponential phase slope or equation characteristics between keratinocytes, fibroblasts, and vero cells
+
+
+## Plot GFP trajectory for each cell type
+
+```{r, echo=F, fig.height=10}
+dat=read.csv("GFP_Data_Figure4_raw.csv")
+names(dat)[1]="time"
+
+lim=range(dat[,-1])
+
+par(mfrow=c(4,3), mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+# 6 donors for Keratinocytes
+for (i in 1:6) {
+  tmp=dat[,startsWith(colnames(dat), "K"%.%i)]
+  mymatplot(dat$time, tmp, type="b", xlab="Time (hours)", ylab="GFP", main="Keratinocytes, Donor "%.%i, log="y", ylim=lim, pch=1, col=1:ncol(tmp), make.legend = F)
+  abline(h=c(5e3, 18e3, 5e4), lty=c(2,1,2), col=c(1,"gold",1))
+}
+
+# 6 donors for Fibroblasts
+for (i in 1:6) {
+  tmp=dat[,startsWith(colnames(dat), "F"%.%i)]
+  mymatplot(dat$time, tmp, type="b", xlab="Time (hours)", ylab="GFP", main="Fibroblasts, Donor "%.%i, log="y", ylim=lim, pch=1, col=1:ncol(tmp), make.legend = F)
+  abline(h=c(5e3, 18e3, 5e4), lty=c(2,1,2), col=c(1,"gold",1))
+}
+
+```
+
+```{r, echo=F, fig.height=10}
+# Vero
+par(mfrow=c(4,3), mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+plot(V~time, data=dat, type="b", xlab="Time (hours)", ylab="GFP", main="Vero", log="y", ylim=lim)
+lines(dat$time, dat[,"V.1"], col=2, type="b")
+lines(dat$time, dat[,"V.2"], col=3, type="b")
+lines(dat$time, dat[,"V.3"], col=4, type="b")
+lines(dat$time, dat[,"V.4"], col=5, type="b")
+abline(h=c(5e3, 18e3, 5e4), lty=c(2,1,2), col=c(1,"gold",1))
+
+```
+
+## Plot GFP percentage for each cell type
+
+```{r, echo=F, fig.height=10}
+dat=read.csv("GFP_Data_Figure4_pct.csv")
+names(dat)[1]="time"
+
+par(mfrow=c(4,3), mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
+
+lim=c(0,100)
+
+plot(Vero~time, data=dat, type="b", xlab="Time (hours)", ylab="GFP", main="Vero")
+lines(dat$time, dat[,3], col=2, type="b")
+lines(dat$time, dat[,4], col=3, type="b")
+lines(dat$time, dat[,5], col=4, type="b")
+lines(dat$time, dat[,6], col=5, type="b")
+
+plot(Donor.1.Keratinocytes~time, data=dat, type="b", xlab="Time (hours)", ylab="GFP", main="Keratinocytes Donor 1", ylim=lim)
+lines(dat$time, dat[,8], col=2, type="b")
+lines(dat$time, dat[,9], col=3, type="b")
+lines(dat$time, dat[,10], col=4, type="b")
+lines(dat$time, dat[,11], col=5, type="b")
+
+plot(Donor.2.Keratinocytes~time, data=dat, type="b", xlab="Time (hours)", ylab="GFP", main="Keratinocytes Donor 2", ylim=lim)
+lines(dat$time, dat[,13], col=2, type="b")
+lines(dat$time, dat[,14], col=3, type="b")
+lines(dat$time, dat[,15], col=4, type="b")
+lines(dat$time, dat[,16], col=5, type="b")
+
+```
+\newpage
+
+## Estimate the exponential phase slope for each cell type and donor
+
+Define the exponential phase as the time period when GFP crosses 18000. We use a simple algorithm which works under the assumption that the curve crosses this threshold only once, which is satisfied by the data. 
+
+```{r, echo=F}
+
+dat=read.csv("GFP_Data_Figure4_raw.csv")
+names(dat)[1]="time"
+
+# make sure dat$time is two hours apart
+stopifnot(all(2==diff(dat$time)))
+
+# For each column in dat[,-1], find the two values that sandwich 18000 and compute a slope
+res=NULL
+for (i in 2:ncol(dat)) {
+  tmp=dat[,i]
+  idx=which(tmp>18000)[1]
+  if (length(idx)==0) next
+  x=dat$time[idx:(idx-1)]
+  y=tmp[idx:(idx-1)]
+  slope=(log2(y[2])-log2(y[1]))/(x[2]-x[1])
+  res=c(res, slope)
+}
+names(res)=names(dat)[-1]
+cat("Slopes. V-V.4 are Vero replicates, K1-K1.4 are Keratinocytes donor 1 replicates, etc.\n")
+print(res)
+
+# putting results together
+out=NULL
+
+tmp = mean(res[startsWith(names(res), "V")])
+names(tmp) = "V"
+out=c(out, tmp)
+
+tmp1 = sapply (1:6, function (i) mean(res[startsWith(names(res), "K"%.%i)]))
+names(tmp1) = "K"%.%1:6
+out=c(out, tmp1)
+
+tmp2 = sapply (1:6, function (i) mean(res[startsWith(names(res), "F"%.%i)]))
+names(tmp2) = "F"%.%1:6
+out=c(out, tmp2)
+
+
+out=cbinduneven(list(tmp, cbind(tmp1, tmp2)))
+colnames(out)=c("Vero", "Keratinocytes", "Fibroblasts")
+cat("Average slopes across biological replicates. There are 6 donors and one cell line (Vero).\n")
+print(out)
+mywrite.csv(out, "log2GFP_per_hr", row.names = T)
+```
+
+Paired Wilcoxon test between keratinocytes and fibroblasts
+```{r, echo=F}
+wilcox.test(tmp1, tmp2, paired=T)
+```
+
+Unpaired Wilcoxon test between keratinocytes and fibroblasts
+```{r, echo=F}
+wilcox.test(tmp1, tmp2, paired=F)
+myboxplot(list(tmp1, tmp2), main="", xlab="", ylab="GFP slope", names=c("Keratinocytes", "Fibroblasts"), test="w")
+```
+
+Students' t test between keratinocytes and fibroblasts. Paired and then unpaired
+```{r, echo=F}
+t.test(tmp1, tmp2, paired=T)
+t.test(tmp1, tmp2, paired=F)
+```
+
+
+
+Unpaired Wilcoxon test and Student's t test (assuming equal variance) between vero and keratinocytes
+```{r}
+wilcox.test(tmp, tmp1, paired=F)
+myboxplot(list(tmp, tmp1), main="", xlab="", ylab="GFP slope", names=c("Vero", "Keratinocytes"), test="w")
+# t test using two different degrees of freedom
+pt((mean(tmp1)-mean(tmp))/(sqrt(var(tmp1)/6)*7), lower.tail=F, df=5)
+pt((mean(tmp1)-mean(tmp))/(sqrt(var(tmp1)/6)*7), lower.tail=F, df=2)
+```
+
+Unpaired Wilcoxon test and Student's t test (assuming equal variance) between vero and fibroblasts
+```{r}
+wilcox.test(tmp, tmp2, paired=F)
+myboxplot(list(tmp, tmp2), main="", xlab="", ylab="GFP slope", names=c("Vero", "Fibroblasts"), test="w")
+# t test
+pt((mean(tmp2)-mean(tmp))/(sqrt(var(tmp2)/6)*2), lower.tail=F, df=5)
+pnorm((mean(tmp2)-mean(tmp))/(sqrt(var(tmp2)/6)*2), lower.tail=F)
+```
