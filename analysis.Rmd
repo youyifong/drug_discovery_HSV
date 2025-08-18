@@ -9,7 +9,7 @@ library(kyotil)
 library(lme4)
 
 # set drugs variable
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 drugs=rownames(dat)
 names(drugs)=drugs
 ```
@@ -34,7 +34,7 @@ NGC is excluded from the study drugs.
 The Wilcoxon two-sample test results are similar to t-test results.
 
 ```{r, echo=F, message=F}
-dat=read.csv(".fig2.csv")
+dat=read.csv("fig2.csv")
 
 pvals=sapply (1:4, function (i) {
   tmp=dat[,i*2+(-1:0)]
@@ -56,16 +56,16 @@ Using linear mixed models to compare cell types to account for dependent structu
 for (i in 1:4) {
     
   if (i==1) {
-    dat=read.csv(".fig4.csv", row.names=1)
+    dat=read.csv("fig4.csv", row.names=1)
     print("Fig 4")
   } else if(i==2) {
-    dat=read.csv(".figS7_20.csv", row.names=1)
+    dat=read.csv("figS7_20.csv", row.names=1)
     print("Fig S7 20h")
   } else if (i==3) {
-    dat=read.csv(".figS7_36.csv", row.names=1)
+    dat=read.csv("figS7_36.csv", row.names=1)
     print("Fig S7 36h")
   } else {
-    dat=read.csv(".figS7_48.csv", row.names=1)
+    dat=read.csv("figS7_48.csv", row.names=1)
     print("Fig S7 48h")
   }
   
@@ -117,7 +117,7 @@ for (i in 1:4) {
 Each point is a single technical replicate.
 
 ```{r, echo=F, fig.width=10, fig.height=3.1}
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 
 lim=range(dat, na.rm=T)
 cex=1.5
@@ -147,7 +147,7 @@ mylegend(rownames(dat), x=1, col=1:nrow(dat), pch=1:nrow(dat))
 We fit a linear mixed model with a donor random effect for each drug to compare the IC50 of keratinocytes and fibroblasts. Multitesting-adjusted P values are shown below.
 
 ```{r, echo=F, message=F}
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 
 fits=lapply (drugs, function (i) {
   tmp=data.frame(rbind(cbind("K", unlist(dat[i,1:9])), cbind("F", unlist(dat[i,1:9+9,drop=T]))))
@@ -172,7 +172,7 @@ tab[order(as.numeric(tab))]
 Each point is the average of three technical replicates.
 
 ```{r, echo=F, fig.width=8.5, fig.height=8}
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 
 # take means across technical replicates
 dat.1 = sapply (1:6, function (i) exp(apply(log(dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
@@ -236,7 +236,7 @@ mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
 Fit linear mixed models with donors as fixed effects and drug as a random effect and test the null hypothesis that the donor effects, 3 vs 4 and 3 vs 5, are both 0. P values are shown below.
 
 ```{r, echo=F, message=F}
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 
 for(j in 0:1) {
   if (j==0) print("Keratinocytes") else print("Fibroblasts")
@@ -269,7 +269,7 @@ for(j in 0:1) {
 This time, including comparion of Donor 4 and 5
 
 ```{r, echo=F, fig.width=8.5, fig.height=8}
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 
 # take means across technical replicates
 dat.1 = sapply (1:6, function (i) exp(apply(log(dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
@@ -301,7 +301,7 @@ mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
 Each point is a single technical replicate.
 
 ```{r, echo=F, fig.width=10, fig.height=3.1}
-dat=read.csv(".fig5c.csv", row.names=1)
+dat=read.csv("fig5c.csv", row.names=1)
 
 lim=range(dat, na.rm=T)
 cex=1.5
@@ -331,7 +331,7 @@ mylegend(rownames(dat), x=4, col=1:nrow(dat), pch=1:nrow(dat))
 Multitesting-adjusted P values are shown below.
 
 ```{r, echo=F, message=F}
-dat=read.csv(".fig5c.csv", row.names=1)
+dat=read.csv("fig5c.csv", row.names=1)
 dat=round(dat, 0)
 
 fits=lapply (drugs, function (i) {
@@ -357,7 +357,7 @@ tab[order(as.numeric(tab))]
 Each point is the average of three technical replicates.
 
 ```{r, echo=F, fig.width=8.5, fig.height=8}
-dat=read.csv(".fig5c.csv", row.names=1)
+dat=read.csv("fig5c.csv", row.names=1)
 dat=round(dat, 0)
 # take means across technical replicates
 dat.1 = sapply (1:6, function (i) (apply((dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
@@ -421,7 +421,7 @@ mylegend(rownames(dat.1), x=1, col=1:nrow(dat.1), pch=1:nrow(dat.1))
 Fit linear mixed models with donors as fixed effects and drug as a random effect and test the null hypothesis that the donor effects, 3 vs 4 and 3 vs 5, are both 0. P values are shown below.
 
 ```{r, echo=F, message=F}
-dat=read.csv(".fig5c.csv", row.names=1)
+dat=read.csv("fig5c.csv", row.names=1)
 dat=round(dat, 0)
 
 for(j in 0:1) {
@@ -458,7 +458,7 @@ for(j in 0:1) {
 This time, including comparion of Donor 4 and 5
 
 ```{r, echo=F, fig.width=8.5, fig.height=8}
-dat=read.csv(".fig5c.csv", row.names=1)
+dat=read.csv("fig5c.csv", row.names=1)
 dat=round(dat, 0)
 # take means across technical replicates
 dat.1 = sapply (1:6, function (i) (apply((dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
@@ -488,14 +488,14 @@ empty.plot()
 Each point in the figure below represents the average of technical replicates for each donor. Thus, for Ali and Submerged, there is only one unique value for each drug.
 
 ```{r, echo=F, fig.width=9.6, fig.height=6}
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 # take means across technical replicates
 # dat.1 = sapply (1:6, function (i) exp(apply(log(dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
 # take means across technical and donor replicates
 dat.1 = sapply (1:2, function (i) exp(apply(log(dat[,1:9+(i-1)*9]), 1, mean, na.rm=T)))
 
 # add ali and submerged data
-dat=read.csv(".fig6a.csv", row.names=1)
+dat=read.csv("fig6a.csv", row.names=1)
 # take means across technical replicates
 submerged.mean=exp(apply(log(dat[,1:8]), 1, mean, na.rm=T))
 ali.mean=exp(apply(log(dat[,9:13]), 1, mean, na.rm=T))
@@ -560,7 +560,7 @@ A table of the estimated ratios of IC50 (95\% CI) and adjusted p values are show
 ```{r, echo=F, message=F}
 
 # turn Keratinocytes and Fibroblasts data into long format
-dat=read.csv(".fig5b.csv", row.names=1)
+dat=read.csv("fig5b.csv", row.names=1)
 
 # i is 0 for Keratinocytes and 1 for Fibroblasts
 dat.long=NULL
@@ -594,7 +594,7 @@ for (i in 0:1) {
 
 
 # Turn ali and submerged data into long format
-dat=read.csv(".fig6a.csv", row.names=1)
+dat=read.csv("fig6a.csv", row.names=1)
 # column 1 through 8 are submerged data, 9 through 13 are ali data
 for (i in 1:8) {
   dat.long = rbind(dat.long, data.frame(donor="donor submerged/ali", id50=dat[,i], drug=rownames(dat), tissue="Submerged"))
@@ -703,7 +703,7 @@ Each point in the figure below represents the average of technical replicates fo
 
 ```{r, echo=F, fig.width=9.6, fig.height=6}
 
-dat=read.csv(".fig5c.csv", row.names=1)
+dat=read.csv("fig5c.csv", row.names=1)
 dat=round(dat, 0)
 # take means across technical replicates
 # dat.1 = sapply (1:6, function (i) (apply((dat[,1:3+(i-1)*3]), 1, mean, na.rm=T))) 
@@ -711,7 +711,7 @@ dat=round(dat, 0)
 dat.1 = sapply (1:2, function (i) (apply((dat[,1:9+(i-1)*9]), 1, mean, na.rm=T))) 
 
 # add ali and submerged data
-dat=read.csv(".fig6b.csv", row.names=1)
+dat=read.csv("fig6b.csv", row.names=1)
 # take means across technical replicates
 submerged.mean=(apply((dat[,1:8]), 1, mean, na.rm=T))
 ali.mean=(apply((dat[,9:13]), 1, mean, na.rm=T))
@@ -771,7 +771,7 @@ For comparing 3D Ali and 3D Submerged, we fit a linear model for each drug. For 
 exp=F
 
 # turn Keratinocytes and Fibroblasts data into long format
-dat=read.csv(".fig5c.csv", row.names=1)
+dat=read.csv("fig5c.csv", row.names=1)
 dat=round(dat, 0)
 
 # i is 0 for Keratinocytes and 1 for Fibroblasts
@@ -806,7 +806,7 @@ for (i in 0:1) {
 
 
 # Turn ali and submerged data into long format
-dat=read.csv(".fig6b.csv", row.names=1)
+dat=read.csv("fig6b.csv", row.names=1)
 
 # column 1 through 8 are submerged data, 9 through 13 are ali data
 for (i in 1:8) {
@@ -914,7 +914,7 @@ Goal: Generate a trendline for each cell type and/or cell type per donor, then c
 ## Plot GFP trajectory for each cell type
 
 ```{r, echo=F, fig.height=10}
-dat=read.csv(".GFP_Data_Figure4_raw.csv")
+dat=read.csv("GFP_Data_Figure4_raw.csv")
 names(dat)[1]="time"
 
 lim=range(dat[,-1])
@@ -952,7 +952,7 @@ abline(h=c(5e3, 18e3, 5e4), lty=c(2,1,2), col=c(1,"gold",1))
 ## Plot GFP percentage for each cell type
 
 ```{r, echo=F, fig.height=10}
-dat=read.csv(".GFP_Data_Figure4_pct.csv")
+dat=read.csv("GFP_Data_Figure4_pct.csv")
 names(dat)[1]="time"
 
 par(mfrow=c(4,3), mar=c(3.1, 3.1, 2.1, 1.1), mgp = c(2, 1, 0))
@@ -986,7 +986,7 @@ Define the exponential phase as the time period when GFP crosses 18000. We use a
 
 ```{r, echo=F}
 
-dat=read.csv(".GFP_Data_Figure4_raw.csv")
+dat=read.csv("GFP_Data_Figure4_raw.csv")
 names(dat)[1]="time"
 
 # make sure dat$time is two hours apart
